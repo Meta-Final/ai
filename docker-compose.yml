@@ -1,0 +1,16 @@
+version: '3'
+services:
+  backend-fastapi:
+    build:
+      context: ./backend-fastapi/
+      dockerfile: Dockerfile
+    image: backend-fastapi:mtvs_final
+    container_name: backend-fastapi-container
+    restart: on-failure
+    volumes:
+      - ./app:/app
+    ports:
+      - "19653:16384"
+    environment:
+      - ENVIRONMENT=development
+    command: sleep infinity #need to be changed
