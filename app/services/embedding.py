@@ -2,11 +2,11 @@ from transformers import AutoTokenizer, AutoModel
 import torch
 import numpy as np
 from app.core.logging import logger
-from app.core.config import EMBEDDING_MODEL
+from app.core.config import settings
 
 class EmbeddingService:
     def __init__(self):
-        self.model_name = EMBEDDING_MODEL
+        self.model_name = settings.EMBEDDING_MODEL
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModel.from_pretrained(self.model_name)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"

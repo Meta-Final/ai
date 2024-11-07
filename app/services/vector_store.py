@@ -3,13 +3,13 @@ from qdrant_client.http import models
 from app.core.config import settings
 from app.core.logging import logger
 import numpy as np
-from app.core.config import QDRANT_CLIENT_URL, QDRANT_CLIENT_PORT
+# from app.core.config import QDRANT_CLIENT_URL, QDRANT_CLIENT_PORT
 # from qdrant_client.async_client import AsyncQdrantClient
-from app.core.config import EMBEDDING_DIM
+# from app.core.config import EMBEDDING_DIM
 
 class VectorStore:
     def __init__(self):
-        self.client = QdrantClient(QDRANT_CLIENT_URL, port=QDRANT_CLIENT_PORT)
+        self.client = QdrantClient(settings.QDRANT_CLIENT_URL, port=settings.QDRANT_CLIENT_PORT)
         self.collection_name = "articles"
         self._ensure_collection()
 
@@ -20,7 +20,7 @@ class VectorStore:
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=models.VectorParams(
-                    size=EMBEDDING_DIM,
+                    size=settings.EMBEDDING_DIM,
                     distance=models.Distance.COSINE
                 )
             )
@@ -81,7 +81,7 @@ class VectorStore:
             self.client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=models.VectorParams(
-                    size=EMBEDDING_DIM,
+                    size=settings.EMBEDDING_DIM,
                     distance=models.Distance.COSINE
                 )
             )

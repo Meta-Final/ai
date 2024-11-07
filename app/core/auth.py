@@ -7,7 +7,7 @@ from app.core.database import SessionLocal
 from app.core.logging import logger
 import jwt
 from datetime import datetime, timedelta
-from app.core.config import SECRET_KEY, ALGORITHM
+from app.core.config import settings
 
 security = HTTPBearer()
 
@@ -18,7 +18,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     """
     try:
         # Verify token
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         
         # Get user from database
         db = SessionLocal()
@@ -59,4 +59,4 @@ def create_test_token(user_id: str, email: str = None):
         "email": email or f"{user_id}@test.com",
         "exp": datetime.utcnow() + timedelta(days=1)
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
