@@ -1,16 +1,139 @@
-version: '3'
+version: '3.8'
+# version: '3'
+# services:
+#   backend-fastapi:
+#     build:
+#       context: ./backend-fastapi/
+#       dockerfile: Dockerfile
+#     image: backend-fastapi:mtvs_final
+#     container_name: backend-fastapi-container
+#     restart: on-failure
+#     volumes:
+#       - ./app:/app
+#     ports:
+#       - "19653:16384"
+#     environment:
+#       - ENVIRONMENT=development
+#     command: sleep infinity #need to be changed
+
+
+
+
+
 services:
-  backend-fastapi:
+  api:
     build:
-      context: ./backend-fastapi/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend-fastapi/Dockerfile
     image: backend-fastapi:mtvs_final
     container_name: backend-fastapi-container
     restart: on-failure
-    volumes:
-      - ./app:/app
     ports:
-      - "19653:16384"
+      - "8000:8000"
+    env_file:
+      - .env
+    # volumes:
+    #   - ./app:/app
+    #   - ./storage:/app/storage
+    #   - ./generated:/app/generated
+    #   - .env:/app/.env
+    volumes:
+      - ./app:/workspace/app  # Mount app directory under workspace
+      - ./storage:/workspace/storage
+      - ./generated:/workspace/generated
+      - .env:/workspace/.env
+    depends_on:
+      - postgres
+      - redis
+      - qdrant
+      - embedding-service
+    # networks:
+    #   - llm-network
+    networks:
+      - backend-network
+
+  postgres:
+    image: postgres:15
+    container_name: backend-postgres-container
+    env_file:
+      - .env
     environment:
-      - ENVIRONMENT=development
-    command: sleep infinity #need to be changed
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    restart: on-failure
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      # - ./initialization/sql/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    # networks:
+    #   - llm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-network
+
+  redis:
+    image: redis:alpine
+    container_name: backend-redis-container
+    ports:
+      - "6379:6379"
+    restart: on-failure
+    networks:
+      - backend-network
+    # networks:
+    #   - llm-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: backend-qdrant-container
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    restart: on-failure
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    networks:
+      - backend-network
+    # networks:
+    #   - llm-network
+
+# volumes:
+#   postgres_data:
+#   qdrant_storage:
+
+# networks:
+#   llm-network:
+#     driver: network_bridge
+#     name: llm-network
+
+  embedding-service:
+    build:
+      context: ./embedding-fastapi
+      dockerfile: Dockerfile
+    container_name: backend-embedding-container
+    ports:
+      - "8002:8002"
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: on-failure
+    networks:
+      - backend-network
+
+
+networks:
+  backend-network:
+    driver: bridge

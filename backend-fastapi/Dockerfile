@@ -1,39 +1,17 @@
-FROM    python:3.12.7-alpine3.19
+FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /workspace
 
-RUN     apk update && apk upgrade
-RUN apk add --no-cache \
-    dumb-init \
-    gcc \
-    musl-dev \
-    linux-headers \
-    python3-dev \
-    libffi-dev \
-    openssl-dev \
-    cargo \
-    bash
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir --upgrade \
-    "fastapi[all]" \
-    python-multipart \
-    "python-jose[cryptography]" \
-    "passlib[bcrypt]" \
-    sqlalchemy \
-    alembic \
-    "pydantic[email]" \
-    pytest \
-    httpx \
-    black \
-    isort \
-    flake8 \
-    fastapi-users \
-    fastapi-utils \
-    slowapi \
-    fastapi-sqlalchemy \
-    fastapi-cache \
-    uvicorn \
-    gunicorn
+RUN mkdir -p /workspace
+RUN mkdir -p /workspace/app
+RUN mkdir -p /workspace/storage
+RUN mkdir -p /workspace/generated
 
-#DEV PURPOSE ONLY, CHANGE AS SOON AS POSSIBLE.
-CMD ["sleep", "infinity"]
+
+COPY ./backend-fastapi/gunicorn_conf.py .
+COPY main.py .
+
+ENTRYPOINT [ "gunicorn", "main:app", "-c", "gunicorn_conf.py" ]

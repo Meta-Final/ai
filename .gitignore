@@ -3,7 +3,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+qdrant_storage/
+postgres_data/
 .env
+.env_old
 .gradio/
 storage/
 generated/
