@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
 
 
-    DATABASE_URL_ADMIN: str
-    POSTGRES_ADMIN_USER: str
-    POSTGRES_ADMIN_PASSWORD: str
+    # DATABASE_URL_ADMIN: str
+    # POSTGRES_ADMIN_USER: str
+    # POSTGRES_ADMIN_PASSWORD: str
 
     # OpenAI
     OPENAI_API_KEY: str

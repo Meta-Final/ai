@@ -1,8 +1,11 @@
+# RUN THE FOLLOWING COMMAND: python -m scripts.gradio_app
+
 import gradio as gr
 import requests
 import json
 from datetime import datetime
 from uuid import UUID
+import os
 
 
 # Configuration
@@ -162,6 +165,47 @@ def update_token(new_token):
     HEADERS["Authorization"] = f"Bearer {new_token}"
     return f"✅ Token Updated: {new_token}"
 
+
+
+# Upload and Download Filesdef upload_file(file):
+def upload_file(file):
+    try:
+        files = {"file": file}
+        response = requests.post(
+            f"{BASE_URL}/api/v1/files/upload",
+            headers=HEADERS,
+            files=files
+        )
+        return json.dumps(response.json(), indent=2)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def get_file(filename):
+    try:
+        response = requests.get(
+            f"{BASE_URL}/api/v1/files/get/{filename}",
+            headers=HEADERS
+        )
+        if response.status_code == 404:
+            return "File not found"
+        elif response.status_code == 200:
+            # Save the file locally
+            # check if download folder exists
+            if not os.path.exists("downloads"):
+                os.makedirs("downloads", exist_ok=True)
+            # save_path = f"downloaded_{filename}"
+            save_path = f"downloads/{filename}"
+            with open(save_path, "wb") as f:
+                f.write(response.content)
+            return f"File downloaded successfully as {save_path}"
+        else:
+            return f"Error: {response.status_code}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+
+
 # Create Gradio interface
 with gr.Blocks() as app:
     gr.Markdown("# API Testing Interface")
@@ -289,6 +333,36 @@ with gr.Blocks() as app:
             inputs=session_id,
             outputs=history_output
         )
+
+
+
+    with gr.Tab("File Operations"):
+        with gr.Row():
+            with gr.Column():
+                gr.Markdown("## Upload File")
+                file_input = gr.File(label="Select file to upload")
+                upload_button = gr.Button("Upload")
+                upload_output = gr.Textbox(label="Upload Result")
+                
+            with gr.Column():
+                gr.Markdown("## Get File")
+                filename_input = gr.Textbox(label="Filename to download")
+                download_button = gr.Button("Download")
+                download_output = gr.Textbox(label="Download Result")
+        
+        upload_button.click(
+            fn=upload_file,
+            inputs=[file_input],
+            outputs=upload_output
+        )
+        
+        download_button.click(
+            fn=get_file,
+            inputs=[filename_input],
+            outputs=download_output
+        )
+        
+        
 
 if __name__ == "__main__":
     app.launch()

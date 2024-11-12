@@ -17,3 +17,4 @@ python-jose[cryptography]
 gunicorn
 langchain_community
 pyjwt
+python-multipart

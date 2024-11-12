@@ -1,3 +1,8 @@
+# RUN THIS SCRIPT TO SETUP THE DATABASE AND QDRANT VECTOR STORE
+# ON ROOT DIRECTORY, RUN THE FOLLOWING COMMAND: 
+# python -m initialization.setup_all
+
+
 import os
 import sys
 from pathlib import Path
@@ -33,7 +38,7 @@ class DatabaseInitializer:
         self.qdrant_host = "localhost"
         self.qdrant_port = 6333
         self.collection_name = "articles"
-        self.vector_size = 1536  # OpenAI embedding size
+        self.vector_size = 768
 
     def init_qdrant(self):
         """Initialize Qdrant vector store"""
