@@ -4,7 +4,7 @@ import os
 
 router = APIRouter()
 
-@router.post("/trend")
+@router.post("/")
 async def get_trend_image():
     file_path = "/workspace/generated/trend.png"
     if os.path.exists(file_path):
