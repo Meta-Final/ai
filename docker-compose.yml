@@ -9,6 +9,7 @@ services:
     container_name: backend-fastapi-container
     restart: on-failure
     ports:
+      - "19652:8000"
       - "8000:8000"
     env_file:
       - .env

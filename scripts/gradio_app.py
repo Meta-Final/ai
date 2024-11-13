@@ -6,11 +6,13 @@ import json
 from datetime import datetime
 from uuid import UUID
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Configuration
 # development purpose only
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv("BASE_URL")
 HEADERS = {"Authorization": ""}
 
 def format_post_data(title, content):
