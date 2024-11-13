@@ -10,7 +10,7 @@ router = APIRouter()
 @router.post("/search", response_model=SearchResponse)
 async def search_articles(
     request: SearchArticleRequest,
-    current_user: User = Depends(get_current_user)
+    # current_user: User = Depends(get_current_user)
 ):
     results = await article_functions.search_articles(
         request.query,
@@ -87,7 +87,7 @@ async def update_article(
 @router.post("/get", response_model=ArticleResponse)
 async def get_article(
     request: GetArticleRequest,
-    current_user: User = Depends(get_current_user)
+    # current_user: User = Depends(get_current_user)
 ):
     try:
         article = await article_functions.get_article(request.article_id)
