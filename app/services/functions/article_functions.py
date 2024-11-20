@@ -1,9 +1,8 @@
-
 from ..function_registry import FunctionRegistry
 from ..vector_store import VectorStore
 from ..embedding import EmbeddingService
 from typing import List, Optional, Dict, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 from app.core.database import SessionLocal
 from app.models import Article
 from app.core.logging import logger
@@ -12,47 +11,25 @@ from app.models import User
 
 vector_store = VectorStore()
 embedding_service = EmbeddingService()
-
-async def check_article_consistency(article_id: UUID) -> None:
-    """Check if article exists in both PostgreSQL and Qdrant"""
-    db = SessionLocal()
-    try:
-        pg_article = db.query(Article).filter(Article.id == article_id).first()
-        try:
-            await vector_store.get_article(str(article_id))
-            qdrant_exists = True
-        except:
-            qdrant_exists = False
-
-        if pg_article and not qdrant_exists:
-            embedding = await embedding_service.get_embedding(pg_article.content["text"])
-            await vector_store.add_article(
-                str(article_id),
-                embedding,
-                {
-                    "title": pg_article.title,
-                    "snippet": pg_article.content["text"][:200]
-                }
-            )
-        elif not pg_article and qdrant_exists:
-            await vector_store.delete_article(str(article_id))
-    finally:
-        db.close()
-
-async def create_article(json_data: dict, user_id: UUID) -> Article:
-    parsed_data = await parse_json_post(json_data)
+    
+async def create_article(userid: str, elements: list) -> Article:
+    parsed_data = await parse_json_post(elements)
     
     db = SessionLocal()
     try:
-        # added to put username in article
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.userid == userid).first()
+        if not user:
+            raise ValueError(f"User with userid {userid} not found")
+        
+        # Convert elements to JSON-serializable format
+        elements_json = [element.dict() for element in elements]
+        
         article = Article(
-            user_id=user_id,
+            articleid=uuid4(),
+            userid=userid,
             title=parsed_data["title"],
-            # added to put username in article
-            username=user.username,
-            content_text=parsed_data["content_text"],
-            content_json=parsed_data["content_json"]
+            elements=elements_json,
+            elements_text=parsed_data["content_text"],
         )
         db.add(article)
         db.commit()
@@ -61,14 +38,13 @@ async def create_article(json_data: dict, user_id: UUID) -> Article:
         # Create vector embedding
         embedding = await embedding_service.get_embedding(parsed_data["content_text"])
         await vector_store.add_article(
-            str(article.id),
+            str(article.articleid),
             embedding,
             {
                 "title": parsed_data["title"],
                 "snippet": parsed_data["content_text"][:200]
             }
         )
-
         return article
     except Exception as e:
         db.rollback()
@@ -77,22 +53,22 @@ async def create_article(json_data: dict, user_id: UUID) -> Article:
     finally:
         db.close()
 
-async def update_article(article_id: UUID, json_data: dict, user_id: UUID) -> Article:
-    parsed_data = await parse_json_post(json_data)
+async def update_article(articleid: UUID, userid: UUID, elements: list) -> Article:
+    parsed_data = await parse_json_post(elements)
     
     db = SessionLocal()
     try:
         article = db.query(Article).filter(
-            Article.id == article_id,
-            Article.user_id == user_id
+            Article.articleid == articleid,
+            Article.userid == userid
         ).first()
         
         if not article:
-            raise ArticleNotFoundError(str(article_id))
+            raise ArticleNotFoundError(str(articleid))
 
         article.title = parsed_data["title"]
-        article.content_text = parsed_data["content_text"]
-        article.content_json = parsed_data["content_json"]
+        article.elements = elements
+        article.elements_text = parsed_data["content_text"]
 
         db.commit()
         db.refresh(article)
@@ -100,7 +76,7 @@ async def update_article(article_id: UUID, json_data: dict, user_id: UUID) -> Ar
         # Update vector embedding
         embedding = await embedding_service.get_embedding(parsed_data["content_text"])
         await vector_store.add_article(
-            str(article.id),
+            str(article.articleid),
             embedding,
             {
                 "title": parsed_data["title"],
@@ -116,20 +92,21 @@ async def update_article(article_id: UUID, json_data: dict, user_id: UUID) -> Ar
     finally:
         db.close()
 
-async def delete_article(article_id: UUID, user_id: UUID):
+
+async def delete_article(articleid: UUID, userid: UUID):
     db = SessionLocal()
     try:
         article = db.query(Article).filter(
-            Article.id == article_id,
-            Article.user_id == user_id
+            Article.articleid == articleid,
+            Article.userid == userid
         ).first()
         
         if not article:
-            raise ArticleNotFoundError(str(article_id))
+            raise ArticleNotFoundError(str(articleid))
 
         db.delete(article)
         db.commit()
-        await vector_store.delete_article(str(article_id))
+        await vector_store.delete_article(str(articleid))
         
         return {"message": "Article deleted successfully"}
     except Exception as e:
@@ -168,7 +145,7 @@ async def search_articles(query: str, limit: int = 10) -> List[dict]:
         
         return [
             {
-                "id": result.id,
+                "articleid": result.id,
                 "title": result.payload.get("title"),
                 "snippet": result.payload.get("snippet"),
                 "score": result.score
@@ -186,43 +163,45 @@ async def search_articles(query: str, limit: int = 10) -> List[dict]:
     parameters={
         "type": "object",
         "properties": {
-            "article_id": {
+            "articleid": {
                 "type": "string",
                 "description": "UUID of the article to retrieve",
                 "format": "uuid"
             }
         },
-        "required": ["article_id"]
+        "required": ["articleid"]
     }
 )
-async def get_article(article_id: UUID) -> Article:
+async def get_article(articleid: UUID) -> Article:
     db = SessionLocal()
     try:
-        article = db.query(Article).filter(Article.id == article_id).first()
+        article = db.query(Article).filter(Article.articleid == articleid).first()
         if not article:
-            raise ArticleNotFoundError(str(article_id))
+            raise ArticleNotFoundError(str(articleid))
         
-        # await check_article_consistency(article_id)
         return article
     finally:
         db.close()
     
-#     return article
-async def parse_json_post(post_data: dict) -> dict:
+async def parse_json_post(elements: list) -> dict:
     """Parse JSON data and extract title and content"""
-    title = post_data["posts"][0]["postId"]
+    if not elements:
+        raise ValueError("Elements list is empty")
+
+    first_post = elements[0]
+    title = first_post.postId
     
     # Collect all text contents
     text_contents = []
-    for page in post_data["posts"][0]["pages"]:
-        for element in page["elements"]:
-            if element["type"] == 0 and element["content"]:
-                text_contents.append(element["content"])
+    for post in elements:
+        for page in post.pages:
+            for element in page.elements:
+                if element.type == 0 and element.content:
+                    text_contents.append(element.content)
     
     combined_text = "\n".join(text_contents)
     
     return {
         "title": title,
         "content_text": combined_text,
-        "content_json": post_data
     }

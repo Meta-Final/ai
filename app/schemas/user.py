@@ -1,21 +1,20 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from uuid import UUID
 from datetime import datetime
 
-class UserBase(BaseModel):
+class UserCreate(BaseModel):
+    userid: str
     username: str
+    email: Optional[str] = None
 
-class UserCreate(UserBase):
-    pass
+    class Config:
+        orm_mode = True
 
-class User(UserBase):
-    id: UUID
+class User(BaseModel):
+    userid: str
+    username: str
+    email: Optional[str] = None
     created_at: datetime
 
     class Config:
-        from_attributes = True
-        
-class CurrentUser(User):
-    """Used for authentication/current user context"""
-    firebase_uid: str
+        orm_mode = True

@@ -1,51 +1,83 @@
-
 from pydantic import BaseModel, UUID4, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import datetime
 
+class Position(BaseModel):
+    x: float
+    y: float
+    z: float
 
-# class ArticleBase(BaseModel):
-#     json_data: dict = Field(..., description="JSON data containing post information")
+class Scale(BaseModel):
+    x: float
+    y: float
+    z: float
 
-# class CreateArticleRequest(ArticleBase):
-#     pass
+class Element(BaseModel):
+    content: str
+    type: int
+    imageData: str
+    position: Position
+    scale: Scale
+    fontSize: int
+    fontFace: str
+    isUnderlined: bool
+    isStrikethrough: bool
+
+class Page(BaseModel):
+    pageId: int
+    elements: List[Element]
+
+class Post(BaseModel):
+    postId: str
+    pages: List[Page]
+
+class Posts(BaseModel):
+    posts: List[Post]
+
+
+
+class Article(BaseModel):
+    userid: str
+    articleid: UUID4
+    elements: List[Post]
+
 class CreateArticleRequest(BaseModel):
-    json_data: dict = Field(..., description="JSON data containing post information")
+    userid: str
+    elements: List[Post]
 
 class UpdateArticleRequest(BaseModel):
-    article_id: UUID4
-    json_data: dict = Field(..., description="JSON data containing post information")
+    userid: str
+    articleid: UUID4
+    elements: List[Post]
 
-class SearchArticleRequest(BaseModel):
-    query: str
-    # limit: Optional[int] = 10
-    limit: int = Field(default=10, ge=1, le=100)
-
-class DeleteArticleRequest(BaseModel):
-    article_id: UUID4
+class DeleteRequest(BaseModel):
+    userid: str
+    articleid: UUID4
 
 class GetArticleRequest(BaseModel):
-    article_id: UUID4
+    userid: str
+    articleid: UUID4
+
+class SearchRequest(BaseModel):
+    query: str
+    limit: int = Field(default=10, ge=1, le=100)
+
+
 
 
 
 
 class ArticleResponse(BaseModel):
-    id: UUID4
-    user_id: UUID4
-    title: str
-    username: str
-    content_text: str
-    content_json: dict
-    created_at: str
-    
+    userid: str
+    articleid: UUID4
+    elements: List[Post]
+
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class SearchResult(BaseModel):
-    id: UUID4
+    articleid: UUID4
     title: str
-    # username: str
     snippet: str
     score: float
 

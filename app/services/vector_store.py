@@ -3,9 +3,6 @@ from qdrant_client.http import models
 from app.core.config import settings
 from app.core.logging import logger
 import numpy as np
-# from app.core.config import QDRANT_CLIENT_URL, QDRANT_CLIENT_PORT
-# from qdrant_client.async_client import AsyncQdrantClient
-# from app.core.config import EMBEDDING_DIM
 
 class VectorStore:
     def __init__(self):
@@ -26,19 +23,19 @@ class VectorStore:
             )
             logger.info(f"Created collection: {self.collection_name}")
 
-    async def add_article(self, article_id: str, vector: np.ndarray, payload: dict):
+    async def add_article(self, articleid: str, vector: np.ndarray, payload: dict):
         try:
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=[
                     models.PointStruct(
-                        id=article_id,
+                        id=articleid,
                         vector=vector.tolist(),
                         payload=payload
                     )
                 ]
             )
-            logger.info(f"Added article {article_id} to vector store")
+            logger.info(f"Added article {articleid} to vector store")
         except Exception as e:
             logger.error(f"Error adding article to vector store: {e}")
             raise
@@ -55,15 +52,15 @@ class VectorStore:
             logger.error(f"Error searching vector store: {e}")
             raise
         
-    async def delete_article(self, article_id: str):
+    async def delete_article(self, articleid: str):
         try:
             self.client.delete(
                 collection_name=self.collection_name,
                 points_selector=models.PointIdsList(
-                    points=[article_id]
+                    points=[articleid]
                 )
             )
-            logger.info(f"Deleted article {article_id} from vector store")
+            logger.info(f"Deleted article {articleid} from vector store")
         except Exception as e:
             logger.error(f"Error deleting article from vector store: {e}")
             raise

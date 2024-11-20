@@ -1,6 +1,21 @@
+# RUN THIS WITH : python -m scripts.reset_db
+# To run on WSL i put IP 
+
 import sys
 from pathlib import Path
 import os
+import time
+import asyncio
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import sessionmaker
+from app.models import Base
+from app.core.logging import logger
+from app.core.config import settings
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+import numpy as np
+
 
 # Add project root to Python path
 ROOT_DIR = Path(__file__).parent.parent
@@ -9,25 +24,43 @@ sys.path.append(str(ROOT_DIR))
 # Set env file path
 os.environ["ENV_FILE"] = str(ROOT_DIR / ".env")
 
-
-
-from sqlalchemy import create_engine, text
-from app.models import Base
-from app.core.logging import logger
-from app.core.config import settings
-from app.services.vector_store import VectorStore
-import asyncio
-from qdrant_client import QdrantClient
-from qdrant_client.http import models
+class VectorStore:
+    def __init__(self):
+        self.client = QdrantClient(settings.DATABASE_HOST_LOCAL, port=settings.QDRANT_CLIENT_PORT)
+        self.collection_name = "articles"
+        # self._ensure_collection()
+        
+    async def reset_collection(self):
+        """Reset the articles collection"""
+        try:
+            # Delete if exists
+            try:
+                self.client.delete_collection(self.collection_name)
+            except Exception:
+                pass
+            # Create new collection
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=models.VectorParams(
+                    size=settings.EMBEDDING_DIM,
+                    distance=models.Distance.COSINE
+                )
+            )
+            logger.info(f"Reset collection: {self.collection_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Error resetting collection: {e}")
+            raise
 
 def create_db_user():
     """Create database user and grant privileges"""
-    engine = create_engine("postgresql://final_project_admin:final_project_admin_password@backend-db-container:5432/llm_api")  # Need admin connection first
     
-    DATABASE_HOST="backend-db-container"
+    
     db_user = settings.DATABASE_USER
     db_password = settings.DATABASE_PASSWORD
     db_name = settings.DATABASE_NAME
+
+    engine = create_engine(f"postgresql://{db_user}:{db_password}@{settings.DATABASE_HOST_LOCAL}:{settings.DATABASE_PORT}/{db_name}", isolation_level="AUTOCOMMIT")  # Use WSL IP address and autocommit mode
     
     try:
         with engine.connect() as connection:
@@ -42,21 +75,26 @@ def create_db_user():
                 $$;
             """))
             
-            # Create database if not exists
-            connection.execute(text(f"""
-                CREATE DATABASE {db_name}
-                    WITH 
-                    OWNER = {db_user}
-                    ENCODING = 'UTF8'
-                    LC_COLLATE = 'en_US.utf8'
-                    LC_CTYPE = 'en_US.utf8';
-            """))
+            # Check if database exists
+            db_exists = connection.execute(text(f"""
+                SELECT 1 FROM pg_database WHERE datname = '{db_name}';
+            """)).scalar()
+            
+            if not db_exists:
+                # Create database if not exists
+                connection.execute(text(f"""
+                    CREATE DATABASE {db_name}
+                        WITH 
+                        OWNER = {db_user}
+                        ENCODING = 'UTF8'
+                        LC_COLLATE = 'en_US.utf8'
+                        LC_CTYPE = 'en_US.utf8';
+                """))
             
             # Grant privileges
             connection.execute(text(f"""
                 GRANT ALL PRIVILEGES ON DATABASE {db_name} TO {db_user};
             """))
-            connection.commit()
             logger.info(f"Created user {db_user} and database {db_name}")
             return True
     except Exception as e:
@@ -65,7 +103,7 @@ def create_db_user():
 
 def reset_postgresql():
     """Reset database and create tables"""
-    engine = create_engine("postgresql://final_project_user:final_project_user_password@backend-db-container:5432/llm_api")
+    engine = create_engine(f"postgresql://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST_LOCAL}:{settings.DATABASE_PORT}/{settings.DATABASE_NAME}")  # Use WSL IP address
     
     try:
         # Drop all tables and recreate schema
@@ -87,49 +125,6 @@ def reset_postgresql():
     except Exception as e:
         logger.error(f"Error resetting database: {e}")
         return False
-
-
-# class VectorStore:
-#     def __init__(self):
-#         self.client = QdrantClient(settings.QDRANT_CLIENT_URL, port=settings.QDRANT_CLIENT_PORT)
-#         self.collection_name = "articles"
-#         self._ensure_collection()
-
-#     def _ensure_collection(self):
-#         try:
-#             self.client.get_collection(self.collection_name)
-#         except Exception:
-#             self.client.create_collection(
-#                 collection_name=self.collection_name,
-#                 vectors_config=models.VectorParams(
-#                     size=settings.EMBEDDING_DIM,
-#                     distance=models.Distance.COSINE
-#                 )
-#             )
-#             logger.info(f"Created collection: {self.collection_name}")
-
-#     async def reset_collection(self):
-#         """Reset the articles collection"""
-#         try:
-#             # Delete if exists
-#             try:
-#                 self.client.delete_collection(self.collection_name)
-#             except Exception:
-#                 pass
-#             # Create new collection
-#             self.client.create_collection(
-#                 collection_name=self.collection_name,
-#                 vectors_config=models.VectorParams(
-#                     size=settings.EMBEDDING_DIM,
-#                     distance=models.Distance.COSINE
-#                 )
-#             )
-#             logger.info(f"Reset collection: {self.collection_name}")
-#         except Exception as e:
-#             logger.error(f"Error resetting collection: {e}")
-#             raise
-
-
 
 if __name__ == "__main__":
     logger.info("Starting database reset...")

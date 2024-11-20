@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str
     DATABASE_HOST: str
     DATABASE_PORT: str
+    DATABASE_HOST_LOCAL: str
 
     # Postgres settings
     POSTGRES_USER: str

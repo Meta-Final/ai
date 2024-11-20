@@ -10,14 +10,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configuration
 # development purpose only
 BASE_URL = os.getenv("BASE_URL")
 HEADERS = {"Authorization": ""}
 
-def format_post_data(title, content):
+def format_post_data(userid, title, content):
     return {
-        "posts": [
+        "userid": userid,
+        "elements": [
             {
                 "postId": title,
                 "pages": [
@@ -42,11 +42,6 @@ def format_post_data(title, content):
                                 "fontFace": "SUIT-Light SDF",
                                 "isUnderlined": False,
                                 "isStrikethrough": False
-                            },
-                            {
-                                "content": "",
-                                "type": 1,
-                                "imageData": ""
                             }
                         ]
                     }
@@ -55,88 +50,79 @@ def format_post_data(title, content):
         ]
     }
 
-def set_auth_token(user_id):
-    # Get test token for development
-    # response = requests.post(f"{BASE_URL}/api/v1/auth/test-token", json={"user_id": "test-user"})
+def create_user(userid, username, email=None):
     try:
-        # Using query parameter instead of JSON body
-        response = requests.post(f"{BASE_URL}/api/v1/auth/test-token?user_id={user_id}")
-        if response.ok:
-            token = response.json()["access_token"]
-            HEADERS["Authorization"] = f"Bearer {token}"
-            # return "✅ Authentication Success - Token: " + token[:10] + "..."
-            return f"✅ Authentication Success - Token: {token}"
-        return f"❌ Auth Failed: {response.text}"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
-
-def create_article(title, content):
-    try:
-        json_data = format_post_data(title, content)
         response = requests.post(
-            f"{BASE_URL}/api/v1/articles/create",
+            f"{BASE_URL}/auth/create-user",
             headers=HEADERS,
-            json={"json_data": json_data}
+            json={"userid": userid, "username": username, "email": email}
         )
         return json.dumps(response.json(), indent=2, ensure_ascii=False)
     except Exception as e:
         return f"Error: {str(e)}"
 
-def update_article(article_id, title, content):
+def create_article(userid, title, content):
     try:
-        json_data = format_post_data(title, content)
+        json_data = format_post_data(userid, title, content)
         response = requests.post(
-            f"{BASE_URL}/api/v1/articles/update",
+            f"{BASE_URL}/articles/create",
+            headers=HEADERS,
+            json=json_data
+        )
+        return json.dumps(response.json(), indent=2, ensure_ascii=False)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def update_article(userid, articleid, title, content):
+    try:
+        json_data = format_post_data(userid, title, content)
+        response = requests.post(
+            f"{BASE_URL}/articles/update",
             headers=HEADERS,
             json={
-                "article_id": article_id,
-                "json_data": json_data
+                "userid": userid,
+                "articleid": articleid,
+                "elements": json_data["elements"]
             }
         )
         return json.dumps(response.json(), indent=2, ensure_ascii=False)
     except Exception as e:
         return f"Error: {str(e)}"
 
-def get_article(article_id: str):
+def get_article(userid, articleid: str):
     try:
-        # Validate and convert string to UUID
-        # article_uuid = article_id
-        
         response = requests.post(
-            f"{BASE_URL}/api/v1/articles/get",
+            f"{BASE_URL}/articles/get",
             headers=HEADERS,
-            json={"article_id": article_id}  # Convert UUID to string for JSON
+            json={"userid": userid, "articleid": articleid}
         )
-        print('article_id :', article_id)
-        
         if response.status_code == 500:
             return f"❌ Server Error: {response.json()['detail']}"
         elif not response.ok:
             return f"❌ Error: {response.status_code} - {response.text}"
-            
         return json.dumps(response.json(), indent=2, ensure_ascii=False)
     except ValueError:
         return "❌ Error: Invalid UUID format"
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-def delete_article(article_id):
+def delete_article(userid, articleid):
     try:
         response = requests.post(
-            f"{BASE_URL}/api/v1/articles/delete",
+            f"{BASE_URL}/articles/delete",
             headers=HEADERS,
-            json={"article_id": article_id}
+            json={"userid": userid, "articleid": articleid}
         )
         return json.dumps(response.json(), indent=2, ensure_ascii=False)
     except Exception as e:
         return f"Error: {str(e)}"
 
-def search_articles(query, limit):
+def search_articles(userid, query, limit):
     try:
         response = requests.post(
-            f"{BASE_URL}/api/v1/articles/search",
+            f"{BASE_URL}/articles/search",
             headers=HEADERS,
-            json={"query": query, "limit": limit}
+            json={"userid": userid, "query": query, "limit": limit}
         )
         return json.dumps(response.json(), indent=2, ensure_ascii=False)
     except Exception as e:
@@ -145,7 +131,7 @@ def search_articles(query, limit):
 def chat_message(session_id, message):
     try:
         response = requests.post(
-            f"{BASE_URL}/api/v1/chat/message",
+            f"{BASE_URL}/chat",
             headers=HEADERS,
             json={"session_id": session_id, "message": message}
         )
@@ -156,7 +142,7 @@ def chat_message(session_id, message):
 def get_chat_history(session_id):
     try:
         response = requests.get(
-            f"{BASE_URL}/api/v1/chat/history/{session_id}",
+            f"{BASE_URL}/chat/history/{session_id}",
             headers=HEADERS
         )
         return json.dumps(response.json(), indent=2, ensure_ascii=False)
@@ -167,14 +153,11 @@ def update_token(new_token):
     HEADERS["Authorization"] = f"Bearer {new_token}"
     return f"✅ Token Updated: {new_token}"
 
-
-
-# Upload and Download Filesdef upload_file(file):
 def upload_file(file):
     try:
         files = {"file": file}
         response = requests.post(
-            f"{BASE_URL}/api/v1/files/upload",
+            f"{BASE_URL}/files/upload",
             headers=HEADERS,
             files=files
         )
@@ -185,17 +168,15 @@ def upload_file(file):
 def get_file(filename):
     try:
         response = requests.get(
-            f"{BASE_URL}/api/v1/files/get/{filename}",
+            f"{BASE_URL}/files/get/{filename}",
             headers=HEADERS
         )
         if response.status_code == 404:
             return "File not found"
         elif response.status_code == 200:
             # Save the file locally
-            # check if download folder exists
             if not os.path.exists("downloads"):
                 os.makedirs("downloads", exist_ok=True)
-            # save_path = f"downloaded_{filename}"
             save_path = f"downloads/{filename}"
             with open(save_path, "wb") as f:
                 f.write(response.content)
@@ -204,9 +185,6 @@ def get_file(filename):
             return f"Error: {response.status_code}"
     except Exception as e:
         return f"Error: {str(e)}"
-
-
-
 
 # Create Gradio interface
 with gr.Blocks() as app:
@@ -217,15 +195,23 @@ with gr.Blocks() as app:
             label="User ID",
             placeholder="Enter your user ID"
         )
+        username_input = gr.Textbox(
+            label="Username",
+            placeholder="Enter your username"
+        )
+        email_input = gr.Textbox(
+            label="Email (optional)",
+            placeholder="Enter your email"
+        )
         auth_status = gr.Textbox(
             label="Auth Status",
             value="Not authenticated",
             interactive=False
         )
-        auth_button = gr.Button("Authenticate", variant="primary")
+        auth_button = gr.Button("Create User Account", variant="primary")
         auth_button.click(
-            fn=set_auth_token,
-            inputs=[user_id_input],
+            fn=create_user,
+            inputs=[user_id_input, username_input, email_input],
             outputs=auth_status
         )
         
@@ -263,6 +249,7 @@ with gr.Blocks() as app:
         gr.Interface(
             fn=create_article,
             inputs=[
+                gr.Textbox(label="User ID"),
                 gr.Textbox(label="Title"),
                 gr.Textbox(label="Content", lines=5)
             ],
@@ -274,6 +261,7 @@ with gr.Blocks() as app:
         gr.Interface(
             fn=update_article,
             inputs=[
+                gr.Textbox(label="User ID"),
                 gr.Textbox(label="Article ID"),
                 gr.Textbox(label="New Title"),
                 gr.Textbox(label="New Content", lines=5)
@@ -285,10 +273,13 @@ with gr.Blocks() as app:
     with gr.Tab("Get Article"):
         gr.Interface(
             fn=get_article,
-            inputs=gr.Textbox(
-                label="Article ID (UUID format)",
-                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            ),
+            inputs=[
+                gr.Textbox(label="User ID"),
+                gr.Textbox(
+                    label="Article ID (UUID format)",
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                )
+            ],
             outputs=gr.Textbox(label="Result", lines=10),
             title="Get Article"
         )
@@ -296,7 +287,10 @@ with gr.Blocks() as app:
     with gr.Tab("Delete Article"):
         gr.Interface(
             fn=delete_article,
-            inputs=gr.Textbox(label="Article ID"),
+            inputs=[
+                gr.Textbox(label="User ID"),
+                gr.Textbox(label="Article ID")
+            ],
             outputs="text",
             title="Delete Article"
         )
@@ -305,6 +299,7 @@ with gr.Blocks() as app:
         gr.Interface(
             fn=search_articles,
             inputs=[
+                gr.Textbox(label="User ID"),
                 gr.Textbox(label="Search Query"),
                 gr.Slider(minimum=1, maximum=100, step=1, label="Limit", value=10)
             ],
@@ -336,8 +331,6 @@ with gr.Blocks() as app:
             outputs=history_output
         )
 
-
-
     with gr.Tab("File Operations"):
         with gr.Row():
             with gr.Column():
@@ -363,8 +356,6 @@ with gr.Blocks() as app:
             inputs=[filename_input],
             outputs=download_output
         )
-        
-        
 
 if __name__ == "__main__":
     app.launch()
