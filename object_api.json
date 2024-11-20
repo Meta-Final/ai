@@ -65,7 +65,7 @@
       "flip_normal": false,
       "scale": 1,
       "mesh": [
-        "20",
+        "55",
         0
       ]
     },
@@ -106,7 +106,7 @@
   },
   "31": {
     "inputs": {
-      "text": "3D cartoon-style soccer ball",
+      "text": "3D cartoon-style starbucks cup",
       "clip": [
         "30",
         1
@@ -119,7 +119,7 @@
   },
   "33": {
     "inputs": {
-      "seed": 221001654538175,
+      "seed": 21520549102441,
       "steps": 20,
       "cfg": 8,
       "sampler_name": "euler",
@@ -210,6 +210,20 @@
     "class_type": "LayeredDiffusionApply",
     "_meta": {
       "title": "Layer Diffuse Apply"
+    }
+  },
+  "55": {
+    "inputs": {
+      "texture_resolution": 1024,
+      "batch_size": 128,
+      "mesh": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "[Comfy3D] Convert Vertex Color To Texture",
+    "_meta": {
+      "title": "Convert Vertex Color To Texture"
     }
   }
 }

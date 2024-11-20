@@ -126,7 +126,7 @@
   },
   "13": {
     "inputs": {
-      "lora_name": "Flux\\magazine_cover2.safetensors",
+      "lora_name": "magazine_cover2.safetensors",
       "strength_model": 1,
       "strength_clip": 1,
       "model": [

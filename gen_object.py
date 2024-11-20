@@ -3,17 +3,17 @@ import uuid
 import json
 import urllib.request
 import urllib.parse
-import comfy_connect as comfy_connect
+import comfy_connect
 import os
 import shutil
 
 cf = comfy_connect
 
 def make_object(id, text):
-    output_folder = f'./{id}/object/'
-    source_folder = '../ComfyUI/output/'
+    output_folder = f'./{id}/object'
+    source_folder = 'ComfyUI/output'
     
-    with open('/object_api.json', 'r', encoding='utf-8') as f:
+    with open('object_api.json', 'r', encoding='utf-8') as f:
         prompt_text = f.read()
 
     prompt = json.loads(prompt_text)
@@ -22,9 +22,10 @@ def make_object(id, text):
 
     ws = websocket.WebSocket()
     ws.connect('ws://{}/ws?clientId={}'.format(cf.server_address, cf.client_id))
+    images = cf.get_images(ws, prompt)
     ws.close()
 
-    file_extensions = ['.obj', '.mtl']
+    file_extensions = ['.obj', '.png']
     
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -34,4 +35,3 @@ def make_object(id, text):
             source_path = os.path.join(source_folder, filename)
             output_path = os.path.join(output_folder, filename)
             shutil.move(source_path, output_path)
-    

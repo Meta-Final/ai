@@ -12,17 +12,12 @@ def make_magazine_cover(id, text):
     
     output_folder = f'./{id}/magazine_cover'
     
-    with open('/magazine_api.json', 'r', encoding='utf-8') as f:
+    with open('magazine_api.json', 'r', encoding='utf-8') as f:
         prompt_text = f.read()
 
     prompt = json.loads(prompt_text)
-    #set the text prompt for our positive CLIPTextEncode
     prompt['6']['inputs']['text'] = 'magazine_cover, magazine_style about' + text
-
-    #set output file name
     prompt['9']['inputs']['filename_prefix'] = f'{id}'
-    
-    #set the seed for our KSampler node
     prompt['3']['inputs']['seed'] = 5
 
     ws = websocket.WebSocket()
@@ -35,7 +30,14 @@ def make_magazine_cover(id, text):
             from PIL import Image
             import io
             image = Image.open(io.BytesIO(image_data))
+            file_path = os.path.join(output_folder, f"{uuid.uuid4().hex}.png")
             if not os.path.exists(output_folder):
                 os.makedirs(output_folder)
-            image.save(output_folder)    
-
+            image.save(file_path)    
+            
+    folder_path = './ComfyUI/output'
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.png'):
+            file_path = os.path.join(folder_path, file_name)
+            os.remove(file_path)
+            
